@@ -10,15 +10,11 @@
 #define HELP_HEIGHT 5
 
 #define SPACE 0x20
-#define UP 72
-#define LEFT 75
-#define RIGHT 77
-#define DOWN 80
 
 int screen_index;
 
 HANDLE screen[2];
-
+// 기본 세팅
 void initialize() {
 	CONSOLE_CURSOR_INFO cursor;
 
@@ -85,9 +81,134 @@ void render(int x, int y, const char* text) {
 }
 
 void move_main(int x, int y) {
-	COORD pos = { x , y };
+	COORD pos = { x , y, };
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
 }
+// 기본 세팅
+
+// 플레이어 총알 --------------------------------------------------------
+#define MAXBULLET 5
+typedef struct {
+	int x;
+	int y;
+	int active;
+	int dx;
+	int dy;
+} Bullet;
+
+Bullet bullets[MAXBULLET];
+
+void initbullets() {
+	for (int i = 0; i < MAXBULLET; i++) {
+		bullets[i].active = 0;
+	}
+}
+
+void fireBullet(int playerX, int playerY) {
+	for (int i = 0; i < MAXBULLET; i++) {
+		if (!bullets[i].active) {
+			bullets[i].x = playerX;
+			bullets[i].y = playerY;
+			bullets[i].active = 1;
+			bullets[i].dx = 0;
+			bullets[i].dy = -1;
+			break;
+		}
+	}
+}
+
+void updateBullets() {
+	for (int i = 0; i < MAXBULLET; i++) {
+		if (bullets[i].active) {
+			bullets[i].x += bullets[i].dx;
+			bullets[i].y += bullets[i].dy;
+
+			if (bullets[i].x >= 120 || bullets[i].x < 0 || 
+				bullets[i].y >= 60 || bullets[i].y < 0) {
+				bullets[i].active = 0;
+			}
+		}
+	}
+}
+
+void renderBullets() {
+	for (int i = 0; i < MAXBULLET; i++) {
+		if (bullets[i].active) {
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 12);
+			render(bullets[i].x, bullets[i].y, "▲");
+			SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+		}
+	}
+}
+// 플레이어 총알 --------------------------------------------------------
+
+// 적 출현
+int enemySpawnCounter = 0;
+#define ENEMY_SPAWN_INTERVAL 30
+#define MAX_ENEMY 10
+struct {
+	int x;
+	int y;
+	int active;
+} enemy[MAX_ENEMY];
+
+void initEnemies() {
+	for (int i = 0; i < MAX_ENEMY; i++) {
+		enemy[i].active = 0;
+	}
+}
+
+void spawnEnemy(int x, int y) {
+	for (int i = 0; i < MAX_ENEMY; i++) {
+		if (!enemy[i].active) {
+			enemy[i].x = x;
+			enemy[i].y = y;
+			enemy[i].active = 1;
+			break;
+		}
+	}
+}
+
+void updateEnemy() {
+	for (int i = 0; i < MAX_ENEMY; i++) {
+		if (enemy[i].active) {
+			enemy[i].y++;
+
+			if (enemy[i].y >= 120) {
+				enemy[i].active = 0;
+			}
+		}
+	}
+}
+
+void renderEnemy() {
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 10);
+
+	for (int i = 0; i < MAX_ENEMY; i++) {
+		if (enemy[i].active) {
+			render(enemy[i].x, enemy[i].y, "■");
+		}
+	}
+
+	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+}
+
+void checkBulletsCollision() {
+	for (int i = 0; i < MAXBULLET; i++) {
+		if (bullets[i].active) {
+			for (int j = 0; j < MAX_ENEMY; j++) {
+				if (enemy[i].active && bullets[i].x == enemy[j].x &&
+					bullets[i].y == enemy[i].y) {
+					bullets[i].active = 0;
+					enemy[i].active = 0;
+					break;
+				}
+			}
+		}
+	}
+}
+
+// 적 출현
 
 // 2번 도움말
 void Help() {
@@ -123,47 +244,60 @@ void Help() {
 
 }
 
-void init_game() {
-	system("cls");
-}
 
 // 1번 게임시작
-void Game_Start() {
-	//init_game();
+void Game_Start(int startX, int startY) {
 
-	int x = 0;
-	int y = 0;
+	int x = startX;
+	int y = startY;
 
+	initbullets();
+	initEnemies();
 	initialize();
 
 	while (1) {
-		char ch = _getch();
 
-		if (ch == 0 || ch == -32) {
-			ch = _getch();
-		}
-
-		if (ch == 27) {
+		// 게임종료
+		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
 			break;
 		}
 
-		if (GetAsyncKeyState(VK_UP) & 0x0001) {
-			y--;
-		}
+		// 플레이어 이동
 		if (GetAsyncKeyState(VK_LEFT) & 0x0001) {
+			if(x > 0)
 			x -= 2;
 		}
 		if (GetAsyncKeyState(VK_RIGHT) & 0x0001) {
 			x += 2;
 		}
-		if (GetAsyncKeyState(VK_DOWN) & 0x0001) {
-			y++;
+
+		// 플레이어 총알 발사
+		if (GetAsyncKeyState(VK_SPACE) & 0x8000) {
+			fireBullet(x, y);
 		}
+
+		enemySpawnCounter++;
+		if (enemySpawnCounter >= ENEMY_SPAWN_INTERVAL) {
+			enemySpawnCounter = 0;
+
+			int enemyX = rand() % 60;
+			spawnEnemy(enemyX, 0);
+		}
+
+		updateBullets();
+		updateEnemy();
+		checkBulletsCollision();
+
 		flip();
 
 		clear();
 
+		renderBullets();
+		renderEnemy();
+
 		render(x, y, "★");
+
+		Sleep(20);
 
 	}
 	release();
@@ -173,11 +307,11 @@ void Start_Menu() {
 	system("cls");
 
 	char map[TITLE_HEIGHT][TITLE_WIDTH] = {
-		{1, 1, 1, 0, 1, 0, 1, 0,1, 1, 1},
-		{1, 0, 0, 0, 1, 0, 1, 0,0, 1, 0},
-		{1, 1, 1, 0, 1, 1, 1, 0,0, 1, 0},
-		{0, 0, 1, 0, 1, 0, 1, 0,0, 1, 0},
-		{1, 1, 1, 0, 1, 0, 1, 0,0, 1, 0}
+		{1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1},
+		{1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0},
+		{1, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0},
+		{0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0},
+		{1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0}
 	};
 
 	// 메인 타이틀
@@ -219,7 +353,8 @@ void Start_Menu() {
 
 	if (number == 1) {
 		// 게임시작
-		Game_Start();
+		system("cls");
+		Game_Start(56 ,50);
 	}
 	else if (number == 2) {
 		// 도움말
@@ -235,6 +370,8 @@ void Start_Menu() {
 int main()
 {
  // 콘솔 슈팅 게임 - 메인 화면
+
+	system("mode con:cols=120 lines=60");
 
 	Start_Menu();
 
