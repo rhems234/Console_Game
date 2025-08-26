@@ -4,14 +4,23 @@
 #include <conio.h>
 
 #define SIZE 10000
+
+#define SCREEN_WIDTH 120
+#define SCREEN_HEIGHT 60
+
 #define TITLE_WIDTH 11
 #define TITLE_HEIGHT 5
+
 #define HELP_WIDTH 15
 #define HELP_HEIGHT 5
+
+#define MAP_WIDTH 40
+#define MAP_HEIGHT 60
 
 #define SPACE 0x20
 
 int screen_index;
+int total_score = 0;
 
 HANDLE screen[2];
 // 기본 세팅
@@ -174,7 +183,7 @@ void updateEnemy() {
 		if (enemy[i].active) {
 			enemy[i].y++;
 
-			if (enemy[i].y >= 120) {
+			if (enemy[i].y >= 60) {
 				enemy[i].active = 0;
 			}
 		}
@@ -195,13 +204,20 @@ void renderEnemy() {
 
 void checkBulletsCollision() {
 	for (int i = 0; i < MAXBULLET; i++) {
-		if (bullets[i].active) {
+		if (bullets[i].active) { // 총알 활성화 상태
 			for (int j = 0; j < MAX_ENEMY; j++) {
-				if (enemy[i].active && bullets[i].x == enemy[j].x &&
-					bullets[i].y == enemy[i].y) {
-					bullets[i].active = 0;
-					enemy[i].active = 0;
-					break;
+				if(enemy[j].active) {
+					if (bullets[i].y >= enemy[j].y && 
+						bullets[i].x >= enemy[j].x && 
+						bullets[i].x < enemy[j].x + 2) {
+
+						bullets[i].active = 0;
+						enemy[j].active = 0;
+
+						// 적 처치 시 점수 증가 추가 예정
+						total_score += 10;
+						break;
+					}
 				}
 			}
 		}
@@ -209,6 +225,39 @@ void checkBulletsCollision() {
 }
 
 // 적 출현
+
+// 게임 맵
+int offsetX = (SCREEN_WIDTH - MAP_WIDTH) / 2;
+int offsetY = 0;
+
+void GameMap() {
+	char map[MAP_HEIGHT][MAP_WIDTH] = { 0 };
+
+	// 맵 초기화
+	for (int i = 0; i < MAP_HEIGHT; i++) {
+		for (int j = 0; j < MAP_WIDTH; j++) {
+			if (j == 0 || j == MAP_WIDTH - 1) {
+				map[i][j] = 1;
+			}
+			else {
+				map[i][j] = 0;
+			}
+		}
+	}
+
+	// 맵 출력
+	for (int i = 0; i < MAP_HEIGHT; i++) {
+		for (int j = 0; j < MAP_WIDTH; j++) {
+			if (map[i][j] == 1) {
+				render(offsetX + j, offsetY + i, "■");
+			}
+			else {
+				render(offsetX + j, offsetY + i, "  ");
+			}
+		}
+	}
+
+}
 
 // 2번 도움말
 void Help() {
@@ -255,6 +304,8 @@ void Game_Start(int startX, int startY) {
 	initEnemies();
 	initialize();
 
+	printf("현재 점수 : %d", total_score);
+
 	while (1) {
 
 		// 게임종료
@@ -264,11 +315,14 @@ void Game_Start(int startX, int startY) {
 
 		// 플레이어 이동
 		if (GetAsyncKeyState(VK_LEFT) & 0x0001) {
-			if(x > 0)
-			x -= 2;
+			if (x > MAP_WIDTH + 2) {
+				x -= 2;
+			}
 		}
 		if (GetAsyncKeyState(VK_RIGHT) & 0x0001) {
-			x += 2;
+			if (x < (MAP_WIDTH - 2) * 2) {
+				x += 2;
+			}
 		}
 
 		// 플레이어 총알 발사
@@ -280,8 +334,8 @@ void Game_Start(int startX, int startY) {
 		if (enemySpawnCounter >= ENEMY_SPAWN_INTERVAL) {
 			enemySpawnCounter = 0;
 
-			int enemyX = rand() % 60;
-			spawnEnemy(enemyX, 0);
+			int enemyX = (rand() % ((MAP_WIDTH-2)/2)) * 2;
+			spawnEnemy(offsetX + enemyX, 0);
 		}
 
 		updateBullets();
@@ -292,14 +346,14 @@ void Game_Start(int startX, int startY) {
 
 		clear();
 
+		GameMap();
 		renderBullets();
 		renderEnemy();
 
-		render(x, y, "★");
-
-		Sleep(20);
+		render(x, y, "■");
 
 	}
+
 	release();
 }
 
@@ -354,7 +408,7 @@ void Start_Menu() {
 	if (number == 1) {
 		// 게임시작
 		system("cls");
-		Game_Start(56 ,50);
+		Game_Start(offsetX + MAP_WIDTH / 2, offsetY + MAP_HEIGHT - 5);
 	}
 	else if (number == 2) {
 		// 도움말
@@ -374,7 +428,6 @@ int main()
 	system("mode con:cols=120 lines=60");
 
 	Start_Menu();
-
 
 	return 0;
 }
