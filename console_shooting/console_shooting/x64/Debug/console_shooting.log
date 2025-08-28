@@ -1,3 +1,5 @@
 ﻿  Source.c
-C:\Users\user\Desktop\Console_Game\Console_Game\console_shooting\console_shooting\Source.c(89,40): warning C4267: '함수': 'size_t'에서 'DWORD'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\user\Desktop\Console_Game\Console_Game\console_shooting\console_shooting\Source.c(94,40): warning C4267: '함수': 'size_t'에서 'DWORD'(으)로 변환하면서 데이터가 손실될 수 있습니다.
+C:\Users\user\Desktop\Console_Game\Console_Game\console_shooting\console_shooting\Source.c(420,35): warning C4018: '>=': signed 또는 unsigned가 일치하지 않습니다.
+C:\Users\user\Desktop\Console_Game\Console_Game\console_shooting\console_shooting\Source.c(418,24): warning C4244: '초기화 중': 'ULONGLONG'에서 'DWORD'(으)로 변환하면서 데이터가 손실될 수 있습니다.
   console_shooting.vcxproj -> C:\Users\user\Desktop\Console_Game\Console_Game\console_shooting\x64\Debug\console_shooting.exe

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <Windows.h>
 #include <conio.h>
+#include <time.h>
 
 #define SIZE 10000
 
@@ -17,10 +18,14 @@
 #define MAP_WIDTH 40
 #define MAP_HEIGHT 60
 
+#define END_WIDTH 17
+#define END_HEIGHT 5
+
 #define SPACE 0x20
 
 int screen_index;
 int total_score = 0;
+int heart = 4;
 
 HANDLE screen[2];
 // 기본 세팅
@@ -133,7 +138,8 @@ void updateBullets() {
 			bullets[i].y += bullets[i].dy;
 
 			if (bullets[i].x >= 120 || bullets[i].x < 0 || 
-				bullets[i].y >= 60 || bullets[i].y < 0) {
+				bullets[i].y >= 60 || bullets[i].y < 0)
+			{
 				bullets[i].active = 0;
 			}
 		}
@@ -178,14 +184,30 @@ void spawnEnemy(int x, int y) {
 	}
 }
 
-void updateEnemy() {
+void updateEnemy(int playerX, int playerY) {
+
 	for (int i = 0; i < MAX_ENEMY; i++) {
 		if (enemy[i].active) {
 			enemy[i].y++;
-
+			
+			// 플레이어를 지나쳤을 시 라이프 감소
 			if (enemy[i].y >= 60) {
 				enemy[i].active = 0;
+				heart--;
+
+				Beep(300, 200);
+
 			}
+
+			// 적 충돌 시 라이프 감소
+			if (enemy[i].x == playerX && enemy[i].y == playerY) {
+				enemy[i].active = 0;
+				heart--;
+
+				Beep(300, 200);
+
+			}
+
 		}
 	}
 }
@@ -207,15 +229,15 @@ void checkBulletsCollision() {
 		if (bullets[i].active) { // 총알 활성화 상태
 			for (int j = 0; j < MAX_ENEMY; j++) {
 				if(enemy[j].active) {
-					if (bullets[i].y >= enemy[j].y && 
-						bullets[i].x >= enemy[j].x && 
-						bullets[i].x < enemy[j].x + 2) {
-
+					if (bullets[i].y - enemy[j].y <= 1 &&
+						bullets[i].x >= enemy[j].x &&
+						bullets[i].x < enemy[j].x + 1)
+					{
 						bullets[i].active = 0;
 						enemy[j].active = 0;
 
-						// 적 처치 시 점수 증가 추가 예정
-						total_score += 10;
+						total_score += 100;
+
 						break;
 					}
 				}
@@ -223,7 +245,6 @@ void checkBulletsCollision() {
 		}
 	}
 }
-
 // 적 출현
 
 // 게임 맵
@@ -239,7 +260,7 @@ void GameMap() {
 			if (j == 0 || j == MAP_WIDTH - 1) {
 				map[i][j] = 1;
 			}
-			else {
+			else  {
 				map[i][j] = 0;
 			}
 		}
@@ -251,11 +272,54 @@ void GameMap() {
 			if (map[i][j] == 1) {
 				render(offsetX + j, offsetY + i, "■");
 			}
-			else {
-				render(offsetX + j, offsetY + i, "  ");
-			}
 		}
 	}
+
+}
+
+// 점수, 목숨, 가이드
+void plater_info() {
+	// printf는 루프 종료로 인한 출력으로 인해 sprintf_s를 통한 render 방식으로 출력
+	char score[32];
+	char heartStr[16];
+	char key_guide[64];
+	char attack_guide[64];
+	char pause_guide[64];
+
+	// 점수 표시
+	sprintf_s(score, sizeof(score), "점수 : %-5d", total_score);
+	render(1, 1, score);
+
+	// 목숨 표시
+	switch (heart) {
+	case 4: 
+		sprintf_s(heartStr, sizeof(heartStr), "♥ ♥ ♥ ♥"); 
+		break;
+	case 3: 
+		sprintf_s(heartStr, sizeof(heartStr), "♥ ♥ ♥"); 
+		break;
+	case 2: 
+		sprintf_s(heartStr, sizeof(heartStr), "♥ ♥"); 
+		break;
+	case 1: 
+		sprintf_s(heartStr, sizeof(heartStr), "♥"); 
+		break;
+	default : 
+		EndGame();
+		break;
+	}
+
+	render(1, 3, heartStr);
+
+	// 가이드
+	sprintf_s(key_guide, sizeof(key_guide), "조작 : ←, →");
+	sprintf_s(attack_guide, sizeof(attack_guide), "공격 : Space bar");
+	sprintf_s(pause_guide, sizeof(pause_guide), "일시정지 : ESC");
+
+	render(100, 54, key_guide);
+	render(100, 56, attack_guide);
+	render(100, 58, pause_guide);
+
 
 }
 
@@ -284,15 +348,24 @@ void Help() {
 		printf("\n");
 	}
 
-	move_main(42, 20);
-	printf("도도도도도도도도도도도도도도도도도도도도도도\n");
-	move_main(42, 21);
-	printf("움움움움움움움움움움움움움움움움움움움움움움\n");
-	move_main(42, 22);
-	printf("말말말말말말말말말말말말말말말말말말말말말말\n");
+	move_main(50, 20);
+	printf("조작 : ←, →\n");
+	move_main(50, 21);
+	printf("공격 : Space bar\n");
+	move_main(50, 22);
+	printf("일시정지 : ESC\n");
+	move_main(50, 23);
+	printf("뒤로가기 : BackSpace\n");
+
+	while (1) {
+
+		if (GetAsyncKeyState(VK_BACK) & 0x0001) {
+			Sleep(50);
+			return;
+		}
+	}
 
 }
-
 
 // 1번 게임시작
 void Game_Start(int startX, int startY) {
@@ -300,17 +373,31 @@ void Game_Start(int startX, int startY) {
 	int x = startX;
 	int y = startY;
 
+	DWORD lastFiretime = 0;
+	int fireDelay = 300;
+
+	int paused = 0;
+
 	initbullets();
 	initEnemies();
 	initialize();
 
-	printf("현재 점수 : %d", total_score);
-
 	while (1) {
+		char text[16];
 
-		// 게임종료
 		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
-			break;
+			paused = !paused;
+			Sleep(100);
+		}
+
+		if (paused) {
+
+			sprintf_s(text, sizeof(text), "PAUSE");
+			render(110, 0, text);
+
+			flip();
+			Sleep(100);
+			continue;
 		}
 
 		// 플레이어 이동
@@ -326,8 +413,14 @@ void Game_Start(int startX, int startY) {
 		}
 
 		// 플레이어 총알 발사
-		if (GetAsyncKeyState(VK_SPACE) & 0x8000) {
-			fireBullet(x, y);
+		if ((GetAsyncKeyState(VK_SPACE) & 0x8000)) {
+			
+			DWORD currentTime = GetTickCount64();
+
+			if (currentTime - lastFiretime >= fireDelay) {
+				fireBullet(x, y);
+				lastFiretime = currentTime;
+			}
 		}
 
 		enemySpawnCounter++;
@@ -339,10 +432,8 @@ void Game_Start(int startX, int startY) {
 		}
 
 		updateBullets();
-		updateEnemy();
+		updateEnemy(x, y);
 		checkBulletsCollision();
-
-		flip();
 
 		clear();
 
@@ -352,6 +443,11 @@ void Game_Start(int startX, int startY) {
 
 		render(x, y, "■");
 
+		plater_info();
+
+		flip();
+
+		Sleep(30);
 	}
 
 	release();
@@ -405,20 +501,45 @@ void Start_Menu() {
 	printf("번호를 입력해주세요 : ");
 	scanf_s("%d", &number);
 
-	if (number == 1) {
-		// 게임시작
-		system("cls");
-		Game_Start(offsetX + MAP_WIDTH / 2, offsetY + MAP_HEIGHT - 5);
+	while (1) {
+		if (number == 1) {
+			// 게임시작
+			system("cls");
+			Game_Start(offsetX + MAP_WIDTH / 2, offsetY + MAP_HEIGHT - 5);
+		}
+		else if (number == 2) {
+			// 도움말
+			Help();
+		}
+		else if (number == 3) {
+			// 종료
+			printf("게임을 종료합니다. ");
+			break;
+		}
 	}
-	else if (number == 2) {
-		// 도움말
-		Help();
+}
+
+// 게임 종료 후
+void EndGame() {
+
+	system("cls");
+
+	char text[END_HEIGHT][END_WIDTH] = {
+		{1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0},
+		{1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0},
+		{1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0},
+		{1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0},
+		{1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0}
+	};
+
+	for (int i = 0; i < END_HEIGHT; i++) {
+		for (int j = 0; j < END_WIDTH; j++) {
+			if (text[i][j] = 1) {
+				printf("■");
+			}
+		}
 	}
-	else if (number == 3) {
-		// 종료
-		printf("exit");
-		
-	}
+
 }
 
 int main()
@@ -428,6 +549,8 @@ int main()
 	system("mode con:cols=120 lines=60");
 
 	Start_Menu();
+
+	EndGame();
 
 	return 0;
 }
