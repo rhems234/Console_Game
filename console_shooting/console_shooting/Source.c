@@ -18,7 +18,7 @@
 #define MAP_WIDTH 40
 #define MAP_HEIGHT 60
 
-#define END_WIDTH 17
+#define END_WIDTH 16
 #define END_HEIGHT 5
 
 #define SPACE 0x20
@@ -26,6 +26,7 @@
 int screen_index;
 int total_score = 0;
 int heart = 4;
+int gameover = 0;
 
 HANDLE screen[2];
 // 기본 세팅
@@ -195,7 +196,7 @@ void updateEnemy(int playerX, int playerY) {
 				enemy[i].active = 0;
 				heart--;
 
-				Beep(300, 200);
+				//Beep(300, 200);
 
 			}
 
@@ -204,7 +205,7 @@ void updateEnemy(int playerX, int playerY) {
 				enemy[i].active = 0;
 				heart--;
 
-				Beep(300, 200);
+				//Beep(300, 200);
 
 			}
 
@@ -277,8 +278,35 @@ void GameMap() {
 
 }
 
+// 게임 종료 후
+void EndGame() {
+
+	system("cls");
+
+	char text[END_HEIGHT][END_WIDTH] = {
+		{1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0},
+		{1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0},
+		{1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0},
+		{1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0},
+		{1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0}
+	};
+
+	for (int i = 0; i < END_HEIGHT; i++) {
+		for (int j = 0; j < END_WIDTH; j++) {
+			if (text[i][j] == 1) {
+				printf("■");
+			}
+			else {
+				printf("  ");
+			}
+		}
+		printf("\n");
+	}
+
+}
+
 // 점수, 목숨, 가이드
-void plater_info() {
+void player_info() {
 	// printf는 루프 종료로 인한 출력으로 인해 sprintf_s를 통한 render 방식으로 출력
 	char score[32];
 	char heartStr[16];
@@ -289,6 +317,11 @@ void plater_info() {
 	// 점수 표시
 	sprintf_s(score, sizeof(score), "점수 : %-5d", total_score);
 	render(1, 1, score);
+
+	if (heart <= 0) {
+		gameover = 1;
+		return;
+	}
 
 	// 목숨 표시
 	switch (heart) {
@@ -382,8 +415,12 @@ void Game_Start(int startX, int startY) {
 	initEnemies();
 	initialize();
 
-	while (1) {
+	while (!gameover) {
 		char text[16];
+
+		if (heart <= 0) {
+			gameover = 1;
+		}
 
 		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
 			paused = !paused;
@@ -443,14 +480,16 @@ void Game_Start(int startX, int startY) {
 
 		render(x, y, "■");
 
-		plater_info();
+		player_info();
 
 		flip();
 
 		Sleep(30);
-	}
 
+	}
 	release();
+
+	//dGame();
 }
 
 void Start_Menu() {
@@ -519,29 +558,6 @@ void Start_Menu() {
 	}
 }
 
-// 게임 종료 후
-void EndGame() {
-
-	system("cls");
-
-	char text[END_HEIGHT][END_WIDTH] = {
-		{1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0},
-		{1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0},
-		{1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0},
-		{1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0},
-		{1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0}
-	};
-
-	for (int i = 0; i < END_HEIGHT; i++) {
-		for (int j = 0; j < END_WIDTH; j++) {
-			if (text[i][j] = 1) {
-				printf("■");
-			}
-		}
-	}
-
-}
-
 int main()
 {
  // 콘솔 슈팅 게임 - 메인 화면
@@ -549,8 +565,6 @@ int main()
 	system("mode con:cols=120 lines=60");
 
 	Start_Menu();
-
-	EndGame();
 
 	return 0;
 }
