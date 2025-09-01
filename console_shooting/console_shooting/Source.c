@@ -4,6 +4,9 @@
 #include <conio.h>
 #include <time.h>
 
+void Start_Menu();
+void EndGame();
+
 #define SIZE 10000
 
 #define SCREEN_WIDTH 120
@@ -196,16 +199,12 @@ void updateEnemy(int playerX, int playerY) {
 				enemy[i].active = 0;
 				heart--;
 
-				//Beep(300, 200);
-
 			}
 
 			// 적 충돌 시 라이프 감소
 			if (enemy[i].x == playerX && enemy[i].y == playerY) {
 				enemy[i].active = 0;
 				heart--;
-
-				//Beep(300, 200);
 
 			}
 
@@ -281,8 +280,6 @@ void GameMap() {
 // 게임 종료 후
 void EndGame() {
 
-	system("cls");
-
 	char text[END_HEIGHT][END_WIDTH] = {
 		{1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0},
 		{1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0},
@@ -303,6 +300,8 @@ void EndGame() {
 		printf("\n");
 	}
 
+	printf("게임 종료");
+
 }
 
 // 점수, 목숨, 가이드
@@ -318,32 +317,6 @@ void player_info() {
 	sprintf_s(score, sizeof(score), "점수 : %-5d", total_score);
 	render(1, 1, score);
 
-	if (heart <= 0) {
-		gameover = 1;
-		return;
-	}
-
-	// 목숨 표시
-	switch (heart) {
-	case 4: 
-		sprintf_s(heartStr, sizeof(heartStr), "♥ ♥ ♥ ♥"); 
-		break;
-	case 3: 
-		sprintf_s(heartStr, sizeof(heartStr), "♥ ♥ ♥"); 
-		break;
-	case 2: 
-		sprintf_s(heartStr, sizeof(heartStr), "♥ ♥"); 
-		break;
-	case 1: 
-		sprintf_s(heartStr, sizeof(heartStr), "♥"); 
-		break;
-	default : 
-		EndGame();
-		break;
-	}
-
-	render(1, 3, heartStr);
-
 	// 가이드
 	sprintf_s(key_guide, sizeof(key_guide), "조작 : ←, →");
 	sprintf_s(attack_guide, sizeof(attack_guide), "공격 : Space bar");
@@ -353,6 +326,26 @@ void player_info() {
 	render(100, 56, attack_guide);
 	render(100, 58, pause_guide);
 
+	// 목숨 표시
+	switch (heart) {
+	case 4:
+		sprintf_s(heartStr, sizeof(heartStr), "♥ ♥ ♥ ♥");
+		break;
+	case 3:
+		sprintf_s(heartStr, sizeof(heartStr), "♥ ♥ ♥");
+		break;
+	case 2:
+		sprintf_s(heartStr, sizeof(heartStr), "♥ ♥");
+		break;
+	case 1:
+		sprintf_s(heartStr, sizeof(heartStr), "♥");
+		break;
+	default:
+		gameover = 1;
+		break;
+	}
+
+	render(1, 3, heartStr);
 
 }
 
@@ -387,13 +380,12 @@ void Help() {
 	printf("공격 : Space bar\n");
 	move_main(50, 22);
 	printf("일시정지 : ESC\n");
-	move_main(50, 23);
-	printf("뒤로가기 : BackSpace\n");
+	move_main(50, 25);
+	printf("메인 메뉴로 돌아갈려면 BackSpace 키를 누르세요...");
 
 	while (1) {
-
 		if (GetAsyncKeyState(VK_BACK) & 0x0001) {
-			Sleep(50);
+			Start_Menu();
 			return;
 		}
 	}
@@ -415,12 +407,9 @@ void Game_Start(int startX, int startY) {
 	initEnemies();
 	initialize();
 
-	while (!gameover) {
-		char text[16];
+	while (1) {
 
-		if (heart <= 0) {
-			gameover = 1;
-		}
+		char text[16];
 
 		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
 			paused = !paused;
@@ -482,14 +471,21 @@ void Game_Start(int startX, int startY) {
 
 		player_info();
 
+		if (heart == 0) {
+			break;
+		}
+
 		flip();
 
 		Sleep(30);
 
 	}
+
 	release();
 
-	//dGame();
+	system("cls");
+
+	EndGame();
 }
 
 void Start_Menu() {
@@ -503,59 +499,56 @@ void Start_Menu() {
 		{1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0}
 	};
 
-	// 메인 타이틀
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 6);
+		// 메인 타이틀
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 6);
 
-	for (int i = 0; i < TITLE_HEIGHT; i++) {
-		move_main(50, 10 + i);
-		for (int j = 0; j < TITLE_WIDTH; j++) {
-			if (map[i][j] == 1) {
-				printf("■");
+		for (int i = 0; i < TITLE_HEIGHT; i++) {
+			move_main(50, 10 + i);
+			for (int j = 0; j < TITLE_WIDTH; j++) {
+				if (map[i][j] == 1) {
+					printf("■");
+				}
+				else {
+					printf("  ");
+				}
 			}
-			else {
-				printf("  ");
+			printf("\n");
+		}
+		// 시작
+		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 6); // 녹색
+		move_main(50, 20);
+		printf("▶ Start Game(1)");
+
+		// 도움말
+		move_main(50, 25);
+		printf("▶ Help(2)");
+
+		// 종료
+		move_main(50, 30);
+		printf("▶ Exit(3)\n");
+
+		int number = 0;
+
+		move_main(50, 35);
+		printf("번호를 입력해주세요 : ");
+		scanf_s("%d", &number);
+
+		while (1) {
+			if (number == 1) {
+				// 게임시작
+				system("cls");
+				Game_Start(offsetX + MAP_WIDTH / 2, offsetY + MAP_HEIGHT - 5);
+			}
+			else if (number == 2) {
+				// 도움말
+				Help();
+			}
+			else if (number == 3) {
+				// 종료
+				printf("게임을 종료합니다. ");
+				break;
 			}
 		}
-		printf("\n");
-	}
-
-	// 시작
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 6); // 녹색
-	move_main(50, 20);
-	printf("▶ Start Game(1)");
-
-	// 도움말
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 6); // 녹색
-	move_main(50, 25);
-	printf("▶ Help(2)");
-
-	// 종료
-	SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 6); // 기본색
-	move_main(50, 30);
-	printf("▶ Exit(3)\n");
-
-	int number = 0;
-
-	move_main(50, 35);
-	printf("번호를 입력해주세요 : ");
-	scanf_s("%d", &number);
-
-	while (1) {
-		if (number == 1) {
-			// 게임시작
-			system("cls");
-			Game_Start(offsetX + MAP_WIDTH / 2, offsetY + MAP_HEIGHT - 5);
-		}
-		else if (number == 2) {
-			// 도움말
-			Help();
-		}
-		else if (number == 3) {
-			// 종료
-			printf("게임을 종료합니다. ");
-			break;
-		}
-	}
 }
 
 int main()
