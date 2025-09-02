@@ -21,7 +21,7 @@ void EndGame();
 #define MAP_WIDTH 40
 #define MAP_HEIGHT 60
 
-#define END_WIDTH 16
+#define END_WIDTH 48
 #define END_HEIGHT 5
 
 #define SPACE 0x20
@@ -30,6 +30,7 @@ int screen_index;
 int total_score = 0;
 int heart = 4;
 int gameover = 0;
+time_t startTime = 0;
 
 HANDLE screen[2];
 // 기본 세팅
@@ -85,7 +86,7 @@ void clear() {
 }
 
 void release() {
-
+	SetConsoleActiveScreenBuffer(GetStdHandle(STD_OUTPUT_HANDLE));
 	CloseHandle(screen[0]);
 	CloseHandle(screen[1]);
 }
@@ -279,16 +280,18 @@ void GameMap() {
 
 // 게임 종료 후
 void EndGame() {
+	system("cls");
 
 	char text[END_HEIGHT][END_WIDTH] = {
-		{1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0},
-		{1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0},
-		{1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0},
-		{1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0},
-		{1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0}
+		{1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0},
+		{1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0},
+		{1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 0},
+		{1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0},
+		{1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1}
 	};
 
 	for (int i = 0; i < END_HEIGHT; i++) {
+		move_main(10, 13 + i);
 		for (int j = 0; j < END_WIDTH; j++) {
 			if (text[i][j] == 1) {
 				printf("■");
@@ -300,7 +303,22 @@ void EndGame() {
 		printf("\n");
 	}
 
-	printf("게임 종료");
+	move_main(50, 25);
+	printf("점수 : %d\n", total_score);
+
+	move_main(35, 30);
+	printf("스페이스바를 누르면 시작 화면으로 돌아갑니다...");
+
+	while (1) {
+
+		if (GetAsyncKeyState(VK_SPACE) & 0x0001) {
+			heart = 4;
+			total_score = 0;
+			Start_Menu();
+			return;
+		}
+
+	}
 
 }
 
@@ -340,12 +358,25 @@ void player_info() {
 	case 1:
 		sprintf_s(heartStr, sizeof(heartStr), "♥");
 		break;
-	default:
+	case 0:
+		sprintf_s(heartStr, sizeof(heartStr), "  ");
 		gameover = 1;
+		break;
+	default:
+		sprintf_s(heartStr, sizeof(heartStr), "  ");
 		break;
 	}
 
 	render(1, 3, heartStr);
+
+	// 플레이 타임
+	char timeStr[32];
+	time_t endTime = time(NULL);
+	double playtime = difftime(endTime, startTime);
+
+	sprintf_s(timeStr, sizeof(timeStr), "플레이 시간 : %.2f", playtime);
+
+	render(1, 50, timeStr);
 
 }
 
@@ -388,6 +419,7 @@ void Help() {
 			Start_Menu();
 			return;
 		}
+		Sleep(10);
 	}
 
 }
@@ -402,10 +434,11 @@ void Game_Start(int startX, int startY) {
 	int fireDelay = 300;
 
 	int paused = 0;
+	startTime = time(NULL);
 
+	initialize();
 	initbullets();
 	initEnemies();
-	initialize();
 
 	while (1) {
 
@@ -471,25 +504,25 @@ void Game_Start(int startX, int startY) {
 
 		player_info();
 
-		if (heart == 0) {
+		if (heart <= 0) {
 			break;
 		}
 
 		flip();
-
+		
 		Sleep(30);
 
 	}
 
 	release();
 
-	system("cls");
-
 	EndGame();
 }
 
 void Start_Menu() {
 	system("cls");
+
+	printf("heart : %d\n", heart);
 
 	char map[TITLE_HEIGHT][TITLE_WIDTH] = {
 		{1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1},
@@ -533,22 +566,22 @@ void Start_Menu() {
 		printf("번호를 입력해주세요 : ");
 		scanf_s("%d", &number);
 
-		while (1) {
-			if (number == 1) {
-				// 게임시작
-				system("cls");
-				Game_Start(offsetX + MAP_WIDTH / 2, offsetY + MAP_HEIGHT - 5);
-			}
-			else if (number == 2) {
-				// 도움말
-				Help();
-			}
-			else if (number == 3) {
-				// 종료
-				printf("게임을 종료합니다. ");
-				break;
-			}
+		switch (number) {
+		case 1:
+			system("cls");
+			Game_Start(offsetX + MAP_WIDTH / 2, offsetY + MAP_HEIGHT - 5);
+			break;
+		case 2:
+			Help();
+			break;
+		case 3:
+			printf("게임을 종료합니다. ");
+			exit(0);
+			break;
+		default :
+			break;
 		}
+
 }
 
 int main()
@@ -557,7 +590,9 @@ int main()
 
 	system("mode con:cols=120 lines=60");
 
-	Start_Menu();
+	while (1) {
+		Start_Menu();
+	}
 
 	return 0;
 }
