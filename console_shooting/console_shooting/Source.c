@@ -31,6 +31,9 @@ int total_score = 0;
 int heart = 4;
 int gameover = 0;
 time_t startTime = 0;
+double playTime = 0;
+
+int prevY = 0;
 
 HANDLE screen[2];
 // 기본 세팅
@@ -306,6 +309,9 @@ void EndGame() {
 	move_main(50, 25);
 	printf("점수 : %d\n", total_score);
 
+	move_main(50, 27);
+	printf("플레이 시간 : %.f초\n", playTime);
+
 	move_main(35, 30);
 	printf("스페이스바를 누르면 시작 화면으로 돌아갑니다...");
 
@@ -372,11 +378,11 @@ void player_info() {
 	// 플레이 타임
 	char timeStr[32];
 	time_t endTime = time(NULL);
-	double playtime = difftime(endTime, startTime);
+	playTime = difftime(endTime, startTime);
 
-	sprintf_s(timeStr, sizeof(timeStr), "플레이 시간 : %.2f", playtime);
+	sprintf_s(timeStr, sizeof(timeStr), "플레이 시간 : %.f초", playTime);
 
-	render(1, 50, timeStr);
+	render(1, 58, timeStr);
 
 }
 
@@ -522,8 +528,6 @@ void Game_Start(int startX, int startY) {
 void Start_Menu() {
 	system("cls");
 
-	printf("heart : %d\n", heart);
-
 	char map[TITLE_HEIGHT][TITLE_WIDTH] = {
 		{1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1},
 		{1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0},
@@ -547,39 +551,65 @@ void Start_Menu() {
 			}
 			printf("\n");
 		}
+
 		// 시작
 		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 6); // 녹색
 		move_main(50, 20);
-		printf("▶ Start Game(1)");
+		printf("Start Game(1)");
 
 		// 도움말
 		move_main(50, 25);
-		printf("▶ Help(2)");
+		printf("Help(2)");
 
 		// 종료
 		move_main(50, 30);
-		printf("▶ Exit(3)\n");
+		printf("Exit(3)");
 
-		int number = 0;
+		int y = 0;
 
-		move_main(50, 35);
-		printf("번호를 입력해주세요 : ");
-		scanf_s("%d", &number);
+		while (1) {
 
-		switch (number) {
-		case 1:
-			system("cls");
-			Game_Start(offsetX + MAP_WIDTH / 2, offsetY + MAP_HEIGHT - 5);
-			break;
-		case 2:
-			Help();
-			break;
-		case 3:
-			printf("게임을 종료합니다. ");
-			exit(0);
-			break;
-		default :
-			break;
+			move_main(47, 20 + prevY);
+			printf("  ");
+
+			if (GetAsyncKeyState(VK_UP) & 0x0001) {
+				if (y > 0) {
+					y -= 5;
+				}
+			}
+
+			if (GetAsyncKeyState(VK_DOWN) & 0x0001) {
+				if (y < 10) {
+					y += 5;
+				}
+			}
+
+			move_main(47, 20 + y);
+			printf("▶");
+
+			prevY = y;
+
+			if (GetAsyncKeyState(VK_SPACE) & 0x0001) {
+
+				if (y == 0) {
+					system("cls");
+					Game_Start(offsetX + MAP_WIDTH / 2, offsetY + MAP_HEIGHT - 5);
+					break;
+				}
+
+				if (y == 5) {
+					Help();
+					break;
+				}
+				if (y == 10) {
+					move_main(47, 35);
+					printf("게임을 종료합니다. ");
+					exit(0);
+					break;
+				}
+			}
+
+			Sleep(100);
 		}
 
 }
