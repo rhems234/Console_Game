@@ -26,12 +26,21 @@ void EndGame();
 
 #define SPACE 0x20
 
+int offsetX = (SCREEN_WIDTH - MAP_WIDTH) / 2;
+int offsetY = 0;
+
 int screen_index;
 int total_score = 0;
 int heart = 4;
 int gameover = 0;
+
+#define MAXBULLET 5
+
+int paused = 0;
 time_t startTime = 0;
 double playTime = 0;
+time_t pauseStart;
+double pauseHistory = 0;
 
 int prevY = 0;
 
@@ -109,7 +118,6 @@ void move_main(int x, int y) {
 // 기본 세팅
 
 // 플레이어 총알 --------------------------------------------------------
-#define MAXBULLET 5
 typedef struct {
 	int x;
 	int y;
@@ -165,7 +173,7 @@ void renderBullets() {
 }
 // 플레이어 총알 --------------------------------------------------------
 
-// 적 출현
+// 적 출현 --------------------------------------------------------
 int enemySpawnCounter = 0;
 #define ENEMY_SPAWN_INTERVAL 30
 #define MAX_ENEMY 10
@@ -233,9 +241,8 @@ void checkBulletsCollision() {
 		if (bullets[i].active) { // 총알 활성화 상태
 			for (int j = 0; j < MAX_ENEMY; j++) {
 				if(enemy[j].active) {
-					if (bullets[i].y - enemy[j].y <= 1 &&
-						bullets[i].x >= enemy[j].x &&
-						bullets[i].x < enemy[j].x + 1)
+					if (bullets[i].y <= enemy[j].y &&
+						bullets[i].x == enemy[j].x)
 					{
 						bullets[i].active = 0;
 						enemy[j].active = 0;
@@ -249,12 +256,9 @@ void checkBulletsCollision() {
 		}
 	}
 }
-// 적 출현
+// 적 출현 --------------------------------------------------------
 
-// 게임 맵
-int offsetX = (SCREEN_WIDTH - MAP_WIDTH) / 2;
-int offsetY = 0;
-
+// 게임 맵 --------------------------------------------------------
 void GameMap() {
 	char map[MAP_HEIGHT][MAP_WIDTH] = { 0 };
 
@@ -280,8 +284,9 @@ void GameMap() {
 	}
 
 }
+// 게임 맵 --------------------------------------------------------
 
-// 게임 종료 후
+// 게임 종료 후 --------------------------------------------------------
 void EndGame() {
 	system("cls");
 
@@ -318,8 +323,10 @@ void EndGame() {
 	while (1) {
 
 		if (GetAsyncKeyState(VK_SPACE) & 0x0001) {
+
 			heart = 4;
 			total_score = 0;
+			pauseHistory = 0;
 			Start_Menu();
 			return;
 		}
@@ -327,8 +334,9 @@ void EndGame() {
 	}
 
 }
+// 게임 종료 후 --------------------------------------------------------
 
-// 점수, 목숨, 가이드
+// 점수, 목숨, 가이드 --------------------------------------------------------
 void player_info() {
 	// printf는 루프 종료로 인한 출력으로 인해 sprintf_s를 통한 render 방식으로 출력
 	char score[32];
@@ -378,15 +386,23 @@ void player_info() {
 	// 플레이 타임
 	char timeStr[32];
 	time_t endTime = time(NULL);
-	playTime = difftime(endTime, startTime);
+	char text[16];
+
+	if (paused) {
+		playTime = difftime(pauseStart, startTime) - pauseHistory;
+	}
+	else {
+		playTime = difftime(endTime, startTime) - pauseHistory;
+	}
 
 	sprintf_s(timeStr, sizeof(timeStr), "플레이 시간 : %.f초", playTime);
 
 	render(1, 58, timeStr);
 
 }
+// 점수, 목숨, 가이드 --------------------------------------------------------
 
-// 2번 도움말
+// 2번 도움말 --------------------------------------------------------
 void Help() {
 	system("cls");
 
@@ -429,8 +445,9 @@ void Help() {
 	}
 
 }
+// 2번 도움말 --------------------------------------------------------
 
-// 1번 게임시작
+// 1번 게임시작 --------------------------------------------------------
 void Game_Start(int startX, int startY) {
 
 	int x = startX;
@@ -439,7 +456,6 @@ void Game_Start(int startX, int startY) {
 	DWORD lastFiretime = 0;
 	int fireDelay = 300;
 
-	int paused = 0;
 	startTime = time(NULL);
 
 	initialize();
@@ -450,28 +466,30 @@ void Game_Start(int startX, int startY) {
 
 		char text[16];
 
-		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) {
+		if (GetAsyncKeyState(VK_ESCAPE) & 0x0001) {
 			paused = !paused;
-			Sleep(100);
+
+			if (paused) {
+				pauseStart = time(NULL);
+				render(110, 0, "PAUSE");
+			}
+			else {
+				pauseHistory += difftime(time(NULL), pauseStart);
+			}
 		}
 
 		if (paused) {
-
-			sprintf_s(text, sizeof(text), "PAUSE");
-			render(110, 0, text);
-
-			flip();
 			Sleep(100);
 			continue;
 		}
 
 		// 플레이어 이동
-		if (GetAsyncKeyState(VK_LEFT) & 0x0001) {
+		if (GetAsyncKeyState(VK_LEFT) & 0x8000) {
 			if (x > MAP_WIDTH + 2) {
 				x -= 2;
 			}
 		}
-		if (GetAsyncKeyState(VK_RIGHT) & 0x0001) {
+		if (GetAsyncKeyState(VK_RIGHT) & 0x8000) {
 			if (x < (MAP_WIDTH - 2) * 2) {
 				x += 2;
 			}
@@ -524,7 +542,9 @@ void Game_Start(int startX, int startY) {
 
 	EndGame();
 }
+// 1번 게임시작 --------------------------------------------------------
 
+// 메인 화면 --------------------------------------------------------
 void Start_Menu() {
 	system("cls");
 
@@ -555,15 +575,15 @@ void Start_Menu() {
 		// 시작
 		SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 6); // 녹색
 		move_main(50, 20);
-		printf("Start Game(1)");
+		printf("Start Game");
 
 		// 도움말
 		move_main(50, 25);
-		printf("Help(2)");
+		printf("Help");
 
 		// 종료
 		move_main(50, 30);
-		printf("Exit(3)");
+		printf("Exit");
 
 		int y = 0;
 
@@ -613,6 +633,13 @@ void Start_Menu() {
 		}
 
 }
+// 메인 화면 --------------------------------------------------------
+
+// 랭킹 시스템 --------------------------------------------------------
+void ShowRank() {
+
+}
+// 랭킹 시스템 --------------------------------------------------------
 
 int main()
 {
